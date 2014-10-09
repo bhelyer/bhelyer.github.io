@@ -168,7 +168,7 @@ Game.draw = function() {
 		}
 		field += "\n";
 	}
-	document.body.innerHTML = "<pre>" + field + "</pre>";
+	document.getElementById("content").innerHTML = "<pre>" + field + "</pre>";
 }
  
 Game.run = function() {
