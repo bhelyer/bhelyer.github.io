@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+	<head>
+
+	<meta charset="utf-8">
+	<title>bhelyer.com - First Blog Entry</title>
+	<link rel="stylesheet" type="text/css" href="/sakura.css">
+	<link rel="icon" type="image/png" href="/favicon-32x32.png" sizes="32x32" />
+	<link rel="icon" type="image/png" href="/favicon-16x16.png" sizes="16x16" />
+	<link rel="shortcut icon" href="/favicon.ico">
+
+	</head>
+
+	<body>
+		<h1>bhelyer.com</h1>
+		<p><a href="/index.html">about</a> | <a href="/projects.html">projects</a> | <a href="/posts">posts</a></p>
+		<hr>
+		<h2>First Blog Entry
+		<small>2024-11-14</small></h2>
+        <p>It had to happen eventually, I suppose.</p>
+<p>I've had blogs before, but they've always been on external hosting services and quickly abandoned. With this one I've rectified the former issue. We'll see about the latter.</p>
+<p>I don't expect a lot of people will read this, so why bother with a blog in 2024?</p>
+<p>Writing forces me to organise my thoughts. Additionally, publishing a blog entry is small act of rebellion against that self-sabotaging force of procastination that doesn't want to release or finish anything because it's not &quot;good enough&quot;.</p>
+<p>In terms of technology, I had a small list of requirements. It had to be static (I can't be bothered to pay for and maintain a server at the moment), I wanted to keep my existing (so called) design, and it had to be simple. I'm happy for the blog itself to be a reverse chronological list of posts.</p>
+<p>If you want to comment, my <a href="/">about</a> page has my contact details.</p>
+<h5>The Options</h5>
+<p>First thought was to write the entries myself. I don't mind writing HTML by hand, and this site was a couple of HTML files, so what's a few more? Short term, I want to add RSS support -- so having titles and dates without having to parse HTML seemed like a good idea. Long term, I don't want to bake the (so called) design into entries and have to migrate a bunch of HTML files. Basically I'm trying to organise my life in such a way as to minimize parsing HTML.</p>
+<p>The next idea was to do it myself. Copy and concatenate some files, parse a little markdown -- no problem, right? I even went so far as writing some code. It became clear, however, that this lead down two paths:</p>
+<ol>
+<li>Writing a DSL to avoid some of the boilerplate.</li>
+<li>Hardcoding the boilerplate, embedding the design into the pages. We'd be a mere step above hand-writing HTML.</li>
+</ol>
+<p>With that revelation, I decided to do the sensible thing and use an existing generator.</p>
+<p><a href="https://gohugo.io/">Hugo</a> was the first that I thought of. We use it at work, so I'm fairly familiar with it. The wrinkle I ran into was that I wanted to keep my existing (so called) design and not just pull down a theme. Hugo themes seem quite powerful, so I have no doubt that with enough patience I could have sat down and made it work. But like most side projects, this has to fit in that limited amount of time where I'm not working but still have energy to work on computer stuff. A certain point through the Hugo docs I decided to look at an alternative. Something simpler.</p>
+<p><a href="https://www.11ty.dev/">11ty</a>'s slogan is <em>Eleventy is a simpler static site generator</em>, so in terms of marketing they're right on the money.</p>
+<h5>Porting The Existing Site</h5>
+<p>Taking my existing site and running <code>npx @11ty/eleventy</code> gets those HTML pages into the generated site. This was one of the things that sold me on it. However, those HTML files refer to CSS files and favicons. To get those into the generated site required the creation of a config file, <code>eleventy.config.js</code>.</p>
+<pre><code class="language-js">export default async function(eleventyConfig) {
+    eleventyConfig.addPassthroughCopy(&quot;sakura.css&quot;)
+    eleventyConfig.addPassthroughCopy(&quot;favicon.ico&quot;)
+    eleventyConfig.addPassthroughCopy(&quot;favicon-16x16.png&quot;)
+    eleventyConfig.addPassthroughCopy(&quot;favicon-32x32.png&quot;)
+    eleventyConfig.addPassthroughCopy(&quot;snake&quot;)
+    eleventyConfig.addPassthroughCopy(&quot;jsrogue&quot;)
+}
+</code></pre>
+<p>As you can see, the Eleventy config file is a JavaScript file. Those last two entries are folders (see my <a href="/projects.html">projects page</a>) with old JavaScript/HTML games of mine.</p>
+<p>By default if you have the file <code>banana.html</code>, Eleventy will place it in <code>banana/index.html</code> (as an exception, this doesn't apply to a file named <code>index.html</code>). This is a sane default, as it lets you have the URI <code>example.com/banana</code> and not expose implementation details of your site. But <a href="https://www.w3.org/Provider/Style/URI">cool URIs don't change</a>, and I already had a page that ended in <code>.html</code>, so I wanted to not break that URL.</p>
+<p>This was easily achieved by adding <code>permalink</code> to the front matter before the HTML file proper.</p>
+<pre><code class="language-html">---
+permalink: &quot;projects.html&quot;
+---
+&lt;!DOCTYPE html&gt;
+</code></pre>
+<h5>Creating A Simple Blog</h5>
+<p>Creating the contents of the blog posts themselves was easy enough. Stick some markdown files in a folder named <code>posts</code> (the name here is arbitrary). In the per post front matter, I added a title and date.</p>
+<pre><code>---
+title: First Blog Entry
+date: 2024-11-14
+---
+</code></pre>
+<p>In the same folder, I created a file <code>posts.json</code> which has some front matter that applies to all the files in the folder.</p>
+<pre><code class="language-js">{
+    &quot;layout&quot;: &quot;blogentry.html&quot;,
+    &quot;tags&quot;: &quot;post&quot;
+}
+</code></pre>
+<p>The <code>layout</code> refers to the HTML file that will be wrapped around the HTML generated from the markdown. Placing <code>blogentry.html</code> in a <code>_includes</code> folder. I won't reproduce the entire thing here, but in the <code>&lt;body&gt;</code> element:</p>
+<pre><code class="language-html">&lt;h2&gt;{{ title }}
+&lt;small&gt;{{ page.date | readableDate }}&lt;/small&gt;&lt;/h2&gt;
+{{ content }}
+</code></pre>
+<p>The double curly braces are macros that are replaced depending on the page being generated. The<code>{{ page.date | readableDate }}</code> macro requires a little explanation. If we drop the filter from the end, this is what the title looks like.
+<img src="/img/first-blog-entry-before.png" alt="">
+Not ideal. Constructing a filter to turn the JS Date into something a little prettier is fairly easy. It can be added to the config file:</p>
+<pre><code class="language-js">    eleventyConfig.addFilter(&quot;readableDate&quot;, dateObj =&gt; {
+      return dateObj.toISOString().split('T')[0];
+    });
+</code></pre>
+<p>In case the (so called) design of my site has changed, this is what <code>{{ page.date | readableDate }}</code> looks like:
+<img src="/img/first-blog-entry-after.png" alt=""></p>
+<p>The last thing to do is to create an index. The interesting part is more simple macro code:</p>
+<pre><code>{%- for post in collections.post reversed -%}
+&lt;a href=&quot;{{ post.url }}&quot;&gt;{{ post.data.title }}&lt;/a&gt; &lt;em&gt;&lt;small&gt;({{ post.date | readableDate }})&lt;/small&gt;&lt;/em&gt;&lt;br&gt;
+{%- endfor -%}
+</code></pre>
+<p>This is why the <code>posts.json</code> needed the <code>post</code> tag -- so we could refer to all the blog posts. The <code>reversed</code> gets us reverse chronological order. At time of writing there's just the one post, but it seems to work.</p>
+<p>That's enough for now, I think. If you made it all the way through this, thank you for reading! My next task is to get an RSS feed up and running. If you have any comments, see the <a href="/">about</a> page for ways to get in touch.</p>
+
+	</body>
+</html>
