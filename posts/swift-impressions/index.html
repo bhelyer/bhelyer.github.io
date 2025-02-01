@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+	<head>
+
+	<meta charset="utf-8">
+	<title>bhelyer.com - Swift Impressions</title>
+	<link rel="stylesheet" type="text/css" href="/sakura.css">
+	<link rel="icon" type="image/png" href="/favicon-32x32.png" sizes="32x32" />
+	<link rel="icon" type="image/png" href="/favicon-16x16.png" sizes="16x16" />
+	<link rel="shortcut icon" href="/favicon.ico">
+
+	</head>
+
+	<body>
+		<h1>bhelyer.com</h1>
+		<p><a href="/index.html">about</a> | <a href="/projects.html">projects</a> | <a href="/posts">posts</a></p>
+		<hr>
+		<h2>Swift Impressions
+		<small>2025-02-02</small></h2>
+        <p>I naïvely thought that one post a month was a nice target to aim for this year, and here we are in February.</p>
+<p>Last year I started learning <a href="https://swift.org">Swift</a>, and I'm going to ramble on about it. As background, I'm a software developer. Most of my work is in C++, C#, and a bit of JavaScript. I've also written a lot of <a href="https://dlang.org">D</a>. So mostly 'brace languages', so Swift isn't too far out of my comfort zone.</p>
+<p>I try and learn new languages and technologies to avoid getting stuck in a technology stack local maximum. Perhaps &quot;system languages&quot; is an outdated term, so I'll say that I'm generally the most interested in languages that compile to native code.</p>
+<p>There's been a lot of talk in the news about memory safety. So while I am one of those strange people that enjoy working in C++, it seems that knowing some modern alternatives would be valuable. (I have complex feelings about memory safety -- probably worthy of its own post.)</p>
+<p>Why Swift? Why not <a href="https://www.rust-lang.org">Rust</a>, <a href="https://ziglang.org">Zig</a>, or <a href="https://odin-lang.org">Odin</a>? The main reason initially was that I recently switched my main phone to an iPhone, and have started using macOS more. Learning Apple's Objective-C replacement seemed like a good idea.</p>
+<h5>The Good</h5>
+<p>This isn't intended to be a comprehensive overview, or a review. Just my thoughts. For context, I've written a level editor for a game project using SwiftUI, and a GameBoy emulator using Raylib, among other smaller projects.</p>
+<p>One thing that appealed to me has nothing to do with the language itself. The Swift project has <a href="https://forums.swift.org">official forums</a>. It seems that a lot of technology communities get siloed off into Discord and Slack channels, which act as information black holes - trapping shared knowledge beyond their event horizons. Community is often ignored when we speak of new languages, but it's actually a large part of the experience of using these tools.</p>
+<p>If we're to talk about syntax, we'll need an example. Here's a function from the afore mentioned GameBoy emulator, chosen arbitrarily.</p>
+<pre><code class="language-swift">    /// OR the given register against the A register, storing the result in the A register.
+    mutating func or(regAWith target: Target) -&gt; ExResult {
+        assert(target.isR8 || target.isN8 || target == .refR16(.hl))
+        let value = if case .r8(let r8) = target {
+            read(from: r8)
+        } else if case .n8(let n8) = target {
+            n8
+        } else {
+            bus.readByte(at: registers.hl)
+        }
+        registers.a = registers.a | value
+        registers.f.rawValue = 0
+        registers.f.zero = registers.a == 0
+        if case .r8 = target {
+            return (cycles: 1, registers.pc &amp;+ 1)
+        } else if case .refR16 = target {
+            return (cycles: 2, registers.pc &amp;+ 1)
+        } else {
+            assert(target.isN8)
+            return (cycles: 2, registers.pc &amp;+ 2)
+        }
+    }
+</code></pre>
+<p>The syntax is very clean. It should be fairly familiar to anyone who has worked in an Algol descended language. It omits a lot of the ceremony present in other languages -- semicolons, parens, type names are all omitted at times.</p>
+<p>The eagle-eyed reader will have noticed that Swift has the labelled arguments of Objective-C:</p>
+<pre><code class="language-swift">read(from: r8)
+</code></pre>
+<p>This took a little getting used to, but I've come to like it. Good labels can really clarify the call site for casual code reading.</p>
+<p>Binding to C and C++ libraries is fairly easy. The incantations required to get SwiftPM working for such code is a little obscure (I found much more success in looking at existing projects than trying to find the correct documentation.) I've mostly been working with C libraries, but the prospect of working directly with C++ code without having to write a C shim is very exciting for gradual adoption.</p>
+<h5>The Bad And The Odd</h5>
+<p>The sheer volume of 'magic' syntax can make learning Swift if you have experience in other older brace languages a little jarring. Here's a <code>View</code> from my level editor as a demonstration:</p>
+<pre><code class="language-swift">struct LevelView: View {
+    @ObservedObject var document: RiftAceEditorDocument
+    @EnvironmentObject var selectedTriggers: SelectedTriggers
+    @State var offset = CGSize.zero
+    
+    var body: some View {
+        ZStack {
+            Image(nsImage: document.backgroundImage)
+                .onTapGesture {
+                    selectedTriggers.removeAll()
+                }
+            ForEach($document.level.triggers) { trigger in
+                TriggerView(trigger: trigger.wrappedValue, imageHeight: $document.backgroundImage.size.height)
+            }
+        }
+    }
+}
+</code></pre>
+<p>I want to focus in on the <code>body</code> property. Every <code>View</code> in SwiftUI will have this. When I first encountered these I had a lot of questions. What is <code>some View</code>, versus just a plain <code>View</code>? What is <code>ZStack { ... }</code> doing there? Is it a function call? A type declaration? How can it have an if statement?</p>
+<p>I won't answer all of those questions, but the <code>SomeType {</code> is usually the result of that lack of ceremony I mentioned. If the last parameter to a function is a closure (function object) the parens can be omitted. Most of the rest are a result of <code>body</code> being a <a href="https://www.hackingwithswift.com/swift/5.4/result-builders">view builder</a>. People tend to have a love-or-hate reaction to result builders. I've not decided where I fall on them.</p>
+<hr>
+<p>One thing that came up while I've been writing that emulator are Swift's enums. Coming from C++, getting enums with associated values and pattern matching is a big upgrade -- I'm a fan. However, there is one small wart:</p>
+<pre><code class="language-swift">enum ByteTarget {
+    case a
+    case b
+}
+enum Target {
+    case r8(ByteTarget)
+    case r16
+}
+</code></pre>
+<p>In an <code>if</code> statement, if I want to detect a <code>Target</code> and I don't care about the associated value, I can do this:</p>
+<pre><code class="language-swift">if case .r8 = value {
+    print(&quot;value is an r8&quot;)
+}
+</code></pre>
+<p>That might make you think that <code>case</code> is an expression. It isn't -- <code>if case</code> is its own thing. You can't do this:</p>
+<pre><code class="language-swift">if case .r8 = value || case .r16 = value {
+	print(&quot;value is an r8 or an r16&quot;)
+}
+</code></pre>
+<p>Nor this:</p>
+<pre><code class="language-swift">assert(case .r8 = value)
+</code></pre>
+<p>The workaround is to created computed <code>Bool</code> properties. Not the end of the world, but it is annoying.</p>
+<hr>
+<p>If you write large expressions you may see a frankly embarrassing error message:</p>
+<pre><code>The compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions
+</code></pre>
+<p>Similarly, large array literals can cause compilation times to explode. As I understand it, this is a result of the <a href="https://github.com/swiftlang/swift/blob/main/docs/TypeChecker.md">type checker</a>. This can lead to the Swift compiler dying on expressions and literals that look fairly simple to the human behind the keyboard.</p>
+<hr>
+<p>Overall, I'm fairly positive on Swift. I'm still fairly new to it, and I don't understand everything (still trying to get my head around the Swift 6 concurrency stuff). I expect I'll be writing more of it and getting more familiar.</p>
+
+	</body>
+</html>
