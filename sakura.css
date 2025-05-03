@@ -87,7 +87,9 @@ hr {
 }
 
 a {
-  text-decoration: none;
+  /* Without the underlines, the links are too subtle. --BAH 
+   * text-decoration: none;
+   */
   color: #1d7484;
 }
 a:visited {
@@ -231,4 +233,20 @@ label, legend, fieldset {
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 600;
+}
+
+/* BAH: More of my nonsense. */
+
+img {
+  margin-bottom: 0;
+  margin-left: auto;
+  margin-right: auto;
+  display: block;
+}
+
+figcaption {
+  font: italic smaller sans-serif;
+  font-size: 1.4rem;
+  text-align: center;
+  margin-bottom: 1rem;
 }
